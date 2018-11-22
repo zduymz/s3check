@@ -1,17 +1,17 @@
-const Redis = require('ioredis')
 const aws = require('aws-sdk')
 const R = require('ramda')
-const util = require('util')
 const config = require('./config')
 const program = require('commander')
+const fs = require('fs');
+const readline = require('readline');
+const stream = require('stream');
+
 
 /*
- * When the process check S3 key and Redis key finished, there are keys left in Redis.
- * Need to dump all those keys to Kinesis, there is another aws lambda task will 
- * handle those keys
+ *  Read from file and publish S3 keys need to be deleted to Kinesis, lambda_s3_delete.js will find all versions
+ *  and delete them
  */
 
-const redis = new Redis()
 // Helper
 const removePrefix = (x) => x.substring(x.indexOf('/'))
 const removeSplash = (x) => x.replace(/\//g,'')
@@ -31,9 +31,9 @@ const getOriginalS3Key = (xs) => {
 const generateShardId = (x) => `shardId-${x.toString().padStart(12, '0')}`
 
 // Declare
-const kinesis_streamname = config.kinesis.stream
-const kinesis = new aws.Kinesis({region: config.kinesis.region})
-const kinesis_shards = R.range(1, config.kinesis.shards + 1).map(generateShardId)
+const kinesis_streamname = config.kinesis.delete.stream
+const kinesis = new aws.Kinesis({region: config.kinesis.delete.region})
+const kinesis_shards = R.range(1, config.kinesis.delete.shards + 1).map(generateShardId)
 
 const counter = () => {
   let count = 0
@@ -42,45 +42,35 @@ const counter = () => {
   return { update: update, total: total }
 }
 
-const dumpRedis = () => {
-    const stream = redis.scanStream({
-        count: config.kinesis.redis_count,
-        match: `${s3_prefix}*`
-    })
-    const draftDeleteCommand = (x) => concatAll(['del'], [x])
-    // const removeRedisKey = (xs) => {
-    //     const tmp = xs.map(draftDeleteCommand)
-    //     console.log(xs)
-    //     redis.pipeline(tmp).exec((err, res) => { })
-    //         .then(() => console.log(`Removed ${xs.length} keys`))
-    // }
+const startProcess = (filename) => {
+
+    const instream = fs.createReadStream(filename);
+    const outstream = new stream;
+    const rl = readline.createInterface(instream, outstream);
+    const limit = config.kinesis.delete.line_count
     const count = counter()
-    stream.on('data', (data) => {
-        count.update(data.length)
-        stream.pause()
-        // publish keys to kinesis
-        kinesis_producer(data).then(() => {
-            console.log('Resume Redis Scan')
-            stream.resume()
-        })
-    })
+    let lines = []
+    rl.on('line', function(line) {
+        if(lines.length < limit) lines.push(line)
+        else {
+            count.update(lines.length)
+            rl.pause()
+            kinesis_producer(data).then(() => {
+                console.log('Resume reading file')
+                // empty array before starting bumping it again
+                lines.length = 0
+                rl.resume()
+            })
 
-    stream.on('end', () => {
-        // Bc async push msg to kinesis, you will see this output earlier a little bit
-        console.log(`Dumped ${count.total()} keys`)
-        // TODO: flush database
-        redis.disconnect()
-    })
-}
+        }
+    });
 
-const kinesis_test = () => {
-    const params = {
-        StreamName: 'dmai-s3',
-        Limit: 300
-    }
-    kinesis.describeStream(params, (err, data) => {
-        console.log(err, data.StreamDescription.Shards.length)
-    })
+    rl.on('close', function() {
+        if(lines.length > 0) {
+            count.update(lines.length)
+            kinesis_producer(data).then(() => console.log(`Dumped ${count.total()} keys`)
+        }
+    });
 }
 
 const kinesis_producer = (data) => {
@@ -111,10 +101,14 @@ const kinesis_producer = (data) => {
     return producerP.then(handleResponse, handleError)
 }
 
-program.option('-p, --prefix <required>', 'S3 bucket in first level')
+program.option('-f, --filename <required>', 'filename is similar to S3 bucket in first level')
     .parse(process.argv)
-const s3_prefix = program.prefix || null
-// s3_prefix = 'document10001032/'
-if (s3_prefix) {
-    dumpRedis()
-}
+// check filename
+const filename = program.filename || null
+fs.stat(filename, (err, stat) => {
+    if(err) {
+        console.log(err)
+        process.exit(1)
+    }
+    startProcess(filename)
+})

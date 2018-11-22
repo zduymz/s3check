@@ -20,8 +20,8 @@ const getLastPart = (x) => x.substring(32)
 const getOriginalS3Key = (xs) => {
         // input: prefix/bl959fe89c-66eb-4c76-8420-5bdc8c0e0e14::jpg::300::142
         // output: prefix/bl95/9fe8/9c-6/6eb-/4c76/-842/0-5b/dc8c/0e0e14::jpg::300::142
-        const x = removePrefix(xs)
-        const prefix = x.substring(0, x.indexOf('/'))
+        const x = removePrefix(xs).replace('/','')
+        const prefix = xs.substring(0, xs.indexOf('/'))
         return {Key: R.join('/', [ prefix, get4Byte(0)(x), get4Byte(4)(x), get4Byte(8)(x), get4Byte(12)(x), get4Byte(16)(x), get4Byte(20)(x), get4Byte(24)(x), get4Byte(28)(x), getLastPart(x)])}
     }
 
