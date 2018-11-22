@@ -40,7 +40,7 @@ const runCheck = (bucket, prefix, mode) => {
     const draftSetCommand = (x) => concatAll(['set'], [x], [''])
     const draftGetCommand = (x) => concatAll(['get'], [x])
     const writeToFile = (filename, xs) => {
-        return xs.length > 0 ? fs.appendFile(filename, R.join('\n', xs), (err) => {
+        return xs.length > 0 ? fs.appendFile(filename, R.join('\n', R.concat(xs, [''])), (err) => {
             if (err) console.log('error write to file: ', err)
         }) : null
     }
