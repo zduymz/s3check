@@ -12,6 +12,7 @@ const errHandler = (err) => {
 const respHandler = (resp) => {
     console.log('Response:', resp)
 }
+
 const s3copy = (params) => {
     return new Promise((resolve, reject) => {
             s3.copyObject(params, (err, res) => {
@@ -29,17 +30,20 @@ const s3copy2 = async (params) => {
 }
 
 exports.handler = (event) => {
-    // TODO implement
     event.Records.forEach(function(record) {
         // Kinesis data is base64 encoded so decode here
         var payload = new Buffer(record.kinesis.data, 'base64').toString('utf-8');
-        const params = {
-            Bucket: copied_bucket, 
-            CopySource: `/${original_bucket}/${payload}`, 
-            Key: payload
-        };
-        console.log('Decoded payload:', params);
-        return s3copy(params).then(respHandler, errHandler)
+
+        const subHandler = (k) => {
+            const params = {
+                Bucket: copied_bucket,
+                CopySource: `/${original_bucket}/${k}`,
+                Key: k
+            };
+        return s3copy(params).then(respHandler, errHandler);
+        }
+        console.log('Decoded payload:', payload);
+        // if one of them get error, promise.all will failed
+        Promise.all(payload.split('~').map(subHandler));
     });
 };
-

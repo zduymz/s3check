@@ -22,8 +22,8 @@ const getLastPart = (x) => x.substring(32)
 const getOriginalS3Key = (xs) => {
         // input: bl959fe89c-66eb-4c76-8420-5bdc8c0e0e14::jpg::300::142
         // output: prefix/bl95/9fe8/9c-6/6eb-/4c76/-842/0-5b/dc8c/0e0e14::jpg::300::142
-        const x = removePrefix(xs)
-        const prefix = x.substring(0, x.indexOf('/'))
+        const x = removePrefix(xs).replace('/','')
+        const prefix = xs.substring(0, xs.indexOf('/'))
         return R.join('/', [prefix, get4Byte(0)(x), get4Byte(4)(x), get4Byte(8)(x), get4Byte(12)(x), get4Byte(16)(x), get4Byte(20)(x), get4Byte(24)(x), get4Byte(28)(x), getLastPart(x)])
     }
 
@@ -35,19 +35,28 @@ const kinesis_streamname = config.kinesis.stream
 const kinesis = new aws.Kinesis({region: config.kinesis.region})
 const kinesis_shards = R.range(1, config.kinesis.shards + 1).map(generateShardId)
 
+const counter = () => {
+  let count = 0
+  const total = () => count
+  const update = (x) => count += (x) ? x : 0
+  return { update: update, total: total }
+}
+
 const dumpRedis = () => {
     const stream = redis.scanStream({
-        count: config.kinesis.redis_count
+        count: config.kinesis.redis_count,
         match: `${s3_prefix}*`
     })
     const draftDeleteCommand = (x) => concatAll(['del'], [x])
-    const removeRedisKey = (xs) => {
-        const tmp = xs.map(draftDeleteCommand)
-        console.log(xs)
-        redis.pipeline(tmp).exec((err, res) => { })
-            .then(() => console.log(`Removed ${xs.length} keys`))
-    }
+    // const removeRedisKey = (xs) => {
+    //     const tmp = xs.map(draftDeleteCommand)
+    //     console.log(xs)
+    //     redis.pipeline(tmp).exec((err, res) => { })
+    //         .then(() => console.log(`Removed ${xs.length} keys`))
+    // }
+    const count = counter()
     stream.on('data', (data) => {
+        count.update(data.length)
         stream.pause()
         // publish keys to kinesis
         kinesis_producer(data).then(() => {
@@ -57,7 +66,8 @@ const dumpRedis = () => {
     })
 
     stream.on('end', () => {
-        console.log(`Dumped ${no} keys`)
+        // Bc async push msg to kinesis, you will see this output earlier a little bit
+        console.log(`Dumped ${count.total()} keys`)
         // TODO: flush database
         redis.disconnect()
     })
@@ -74,13 +84,14 @@ const kinesis_test = () => {
 }
 
 const kinesis_producer = (data) => {
-    // draft message
-    const generateRecord = (v, i) => ({ Data: getOriginalS3Key(v), PartitionKey: kinesis_shards[i%200] })
+    // draft message, 5 keys into a record
+    const generateRecord = (xs, i) => ({Data: R.join('~', xs.map(getOriginalS3Key)), PartitionKey: kinesis_shards[i%200]})
 
     const params = {
-        Records: data.map(generateRecord),
+        Records: R.splitEvery(5, data).map(generateRecord),
         StreamName: kinesis_streamname
     }
+
     const msgCount = data.length
     const handleError = (err) => { console.log('Kinesis Error', err) }
     const handleResponse = (res) => {
@@ -103,4 +114,7 @@ const kinesis_producer = (data) => {
 program.option('-p, --prefix <required>', 'S3 bucket in first level')
     .parse(process.argv)
 const s3_prefix = program.prefix || null
-
+// s3_prefix = 'document10001032/'
+if (s3_prefix) {
+    dumpRedis()
+}
