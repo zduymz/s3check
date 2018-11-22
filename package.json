@@ -1,0 +1,28 @@
+{
+  "name": "s3check",
+  "version": "0.0.1",
+  "description": "S3 bucket check and migrate",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Duy Mai",
+  "license": "ISC",
+  "devDependencies": {
+    "async": "^2.6.1",
+    "aws-sdk": "^2.358.0",
+    "commander": "^2.19.0",
+    "ioredis": "^4.2.0",
+    "ramda": "^0.26.0",
+    "sanctuary": "^0.15.0"
+  },
+  "dependencies": {},
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zduymz/s3check.git"
+  },
+  "bugs": {
+    "url": "https://github.com/zduymz/s3check/issues"
+  },
+  "homepage": "https://github.com/zduymz/s3check#readme"
+}

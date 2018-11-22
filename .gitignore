@@ -1,0 +1,5 @@
+config.js
+node_modules/
+level1.txt
+index.js
+package-lock.json
