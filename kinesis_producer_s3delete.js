@@ -53,33 +53,32 @@ function sleep(ms){
 
 const startProcess = (filename) => {
 
-    const instream = fs.createReadStream(filename);
-    const outstream = new stream;
-    const rl = readline.createInterface(instream, outstream);
+    const LineByLineReader = require('line-by-line')
+    const rl = new LineByLineReader(filename)
+
     const limit = config.kinesis.delete.line_count
     const count = counter()
     let lines = []
-    rl.on('line', function(line) {
+
+    rl.on('line', (line) => {
         if(lines.length < limit) lines.push(line)
         else {
-            count.update(lines.length)
             rl.pause()
+            count.update(lines.length)
             kinesis_producer(lines).then(() => {
                 console.log('Resume reading file')
-                // empty array before starting bumping it again
-                lines.length = 0
-                rl.resume()
+                sleep(50).then(rl.resume())
             })
+            }
+    })
 
-        }
-    });
-
-    rl.on('close', function() {
+    rl.on('end', () => {
         if(lines.length > 0) {
             count.update(lines.length)
             kinesis_producer(lines).then(() => console.log(`Dumped ${count.total()} keys`))
         }
-    });
+    })
+
 }
 
 const kinesis_producer = (data) => {
