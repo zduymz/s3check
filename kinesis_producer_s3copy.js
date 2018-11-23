@@ -43,6 +43,12 @@ const counter = () => {
   return { update: update, total: total }
 }
 
+function sleep(ms){
+    return new Promise(resolve => {
+        setTimeout(resolve, ms)
+    })
+}
+
 const dumpRedis = () => {
     const stream = redis.scanStream({
         count: config.kinesis.copy.redis_count,
@@ -62,8 +68,9 @@ const dumpRedis = () => {
             stream.pause()
             // publish keys to kinesis
             kinesis_producer(data).then(() => {
+                await sleep(10)
                 console.log('Resume Redis Scan')
-                setTimeout(stream.resume(), 10)
+                stream.resume()
             })
         }
     })
