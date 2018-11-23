@@ -39,8 +39,10 @@ const kinesis_shards = R.range(1, config.kinesis.copy.shards + 1).map(generateSh
 const counter = () => {
   let count = 0
   const total = () => count
+  const reset = (x) => count = x
   const update = (x) => count += (x) ? x : 0
-  return { update: update, total: total }
+  const timesleep = () => 2**count
+  return { update: update, total: total, timesleep: timesleep, reset: reset }
 }
 
 function sleep(ms){
@@ -69,7 +71,7 @@ const dumpRedis = () => {
             // publish keys to kinesis
             kinesis_producer(data).then(() => {
                 console.log('Resume Redis Scan')
-                sleep(10).then(stream.resume())
+                sleep(50).then(stream.resume())
             })
         }
     })
@@ -107,7 +109,10 @@ const kinesis_producer = (data) => {
         console.log(`Sent: ${msgCount} Failed: ${res.FailedRecordCount}`)
         // if something go wrong, will push all data again
         if (res.FailedRecordCount > 0) {
-            return kinesis_producer(data)
+            timer.update(1)
+            return sleep(timer.timesleep()).then(kinesis_producer(data))
+        } else {
+            timer.reset(7)
         }
         return null
     }
@@ -119,6 +124,9 @@ const kinesis_producer = (data) => {
     })
     return producerP.then(handleResponse, handleError)
 }
+// timer for preventing flooding kinesis (result from FailedRecordCount)
+const timer = counter()
+timer.reset(7)
 
 program.option('-p, --prefix <required>', 'S3 bucket in first level')
     .parse(process.argv)
