@@ -33,6 +33,7 @@ const generateShardId = (x) => `shardId-${x.toString().padStart(12, '0')}`
 // Declare
 const kinesis_streamname = config.kinesis.delete.stream
 const kinesis = new aws.Kinesis({region: config.kinesis.delete.region})
+const kinesis_shards_count = config.kinesis.delete.shards
 const kinesis_shards = R.range(1, config.kinesis.delete.shards + 1).map(generateShardId)
 
 const counter = () => {
@@ -55,7 +56,7 @@ const startProcess = (filename) => {
         else {
             count.update(lines.length)
             rl.pause()
-            kinesis_producer(data).then(() => {
+            kinesis_producer(lines).then(() => {
                 console.log('Resume reading file')
                 // empty array before starting bumping it again
                 lines.length = 0
@@ -68,17 +69,17 @@ const startProcess = (filename) => {
     rl.on('close', function() {
         if(lines.length > 0) {
             count.update(lines.length)
-            kinesis_producer(data).then(() => console.log(`Dumped ${count.total()} keys`)
+            kinesis_producer(lines).then(() => console.log(`Dumped ${count.total()} keys`))
         }
     });
 }
 
 const kinesis_producer = (data) => {
     // draft message, 5 keys into a record
-    const generateRecord = (xs, i) => ({Data: R.join('~', xs.map(getOriginalS3Key)), PartitionKey: kinesis_shards[i%200]})
+    const generateRecord = (xs, i) => ({Data: R.join('~', xs.map(getOriginalS3Key)), PartitionKey: kinesis_shards[i%kinesis_shards_count]})
 
     const params = {
-        Records: R.splitEvery(5, data).map(generateRecord),
+        Records: R.splitEvery(config.kinesis.delete.keys, data).map(generateRecord),
         StreamName: kinesis_streamname
     }
 

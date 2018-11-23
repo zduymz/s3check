@@ -33,6 +33,7 @@ const generateShardId = (x) => `shardId-${x.toString().padStart(12, '0')}`
 // Declare
 const kinesis_streamname = config.kinesis.copy.stream
 const kinesis = new aws.Kinesis({region: config.kinesis.copy.region})
+const kinesis_shards_count = config.kinesis.copy.shards
 const kinesis_shards = R.range(1, config.kinesis.copy.shards + 1).map(generateShardId)
 
 const counter = () => {
@@ -85,10 +86,10 @@ const kinesis_test = () => {
 
 const kinesis_producer = (data) => {
     // draft message, 5 keys into a record
-    const generateRecord = (xs, i) => ({Data: R.join('~', xs.map(getOriginalS3Key)), PartitionKey: kinesis_shards[i%200]})
+    const generateRecord = (xs, i) => ({Data: R.join('~', xs.map(getOriginalS3Key)), PartitionKey: kinesis_shards[i%kinesis_shards_count]})
 
     const params = {
-        Records: R.splitEvery(5, data).map(generateRecord),
+        Records: R.splitEvery(config.kinesis.copy.keys, data).map(generateRecord),
         StreamName: kinesis_streamname
     }
 
