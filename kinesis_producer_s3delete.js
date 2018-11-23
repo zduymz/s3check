@@ -67,7 +67,8 @@ const startProcess = (filename) => {
             count.update(lines.length)
             kinesis_producer(lines).then(() => {
                 console.log('Resume reading file')
-                sleep(50).then(rl.resume())
+                lines.length = 0
+                sleep(100).then(rl.resume())
             })
             }
     })
