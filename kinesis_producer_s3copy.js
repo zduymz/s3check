@@ -57,13 +57,15 @@ const dumpRedis = () => {
     // }
     const count = counter()
     stream.on('data', (data) => {
-        count.update(data.length)
-        stream.pause()
-        // publish keys to kinesis
-        kinesis_producer(data).then(() => {
-            console.log('Resume Redis Scan')
-            stream.resume()
-        })
+        if(data.length > 0) {
+            count.update(data.length)
+            stream.pause()
+            // publish keys to kinesis
+            kinesis_producer(data).then(() => {
+                console.log('Resume Redis Scan')
+                stream.resume()
+            })
+        }
     })
 
     stream.on('end', () => {
