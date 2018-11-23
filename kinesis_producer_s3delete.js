@@ -39,8 +39,16 @@ const kinesis_shards = R.range(1, config.kinesis.delete.shards + 1).map(generate
 const counter = () => {
   let count = 0
   const total = () => count
+  const reset = (x) => count = x
   const update = (x) => count += (x) ? x : 0
-  return { update: update, total: total }
+  const timesleep = () => 2**count
+  return { update: update, total: total, timesleep: timesleep, reset: reset }
+}
+
+function sleep(ms){
+    return new Promise(resolve => {
+        setTimeout(resolve, ms)
+    })
 }
 
 const startProcess = (filename) => {
@@ -89,7 +97,11 @@ const kinesis_producer = (data) => {
         console.log(`Sent: ${msgCount} Failed: ${res.FailedRecordCount}`)
         // if something go wrong, will push all data again
         if (res.FailedRecordCount > 0) {
-            return kinesis_producer(data)
+            // backup a little bit if error occur
+            timer.update(1)
+            return sleep(timer.timesleep()).then(kinesis_producer(data))
+        } else {
+            timer.reset(7)
         }
         return null
     }
@@ -101,6 +113,10 @@ const kinesis_producer = (data) => {
     })
     return producerP.then(handleResponse, handleError)
 }
+
+// timer for preventing flooding kinesis (result from FailedRecordCount)
+const timer = counter()
+timer.reset(7)
 
 program.option('-f, --filename <required>', 'filename is similar to S3 bucket in first level')
     .parse(process.argv)
