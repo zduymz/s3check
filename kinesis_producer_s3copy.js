@@ -63,7 +63,7 @@ const dumpRedis = () => {
             // publish keys to kinesis
             kinesis_producer(data).then(() => {
                 console.log('Resume Redis Scan')
-                stream.resume()
+                setTimeout(stream.resume(), 100)
             })
         }
     })
