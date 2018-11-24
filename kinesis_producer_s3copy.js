@@ -47,6 +47,7 @@ const counter = () => {
 
 function sleep(ms){
     return new Promise(resolve => {
+        console.log('Sleep: ', ms)
         setTimeout(resolve, ms)
     })
 }
@@ -78,13 +79,15 @@ const dumpRedis = () => {
 
     stream.on('end', () => {
         // Bc async push msg to kinesis, this output earlier a little bit
+        // TODO: sometime, it hang up when everything finsihed. guess something wrong here
         console.log(`Dumped ${count.total()} keys`)
-        redis.flushdb(() => redis.disconnect())
+        //redis.flushdb(() => redis.disconnect())
+        redis.disconnect()
     })
 }
 
 const kinesis_producer = (data) => {
-    // draft message, 5 keys into a record
+    // draft message, config.kinesis.copy.keys into a record
     const generateRecord = (xs, i) => ({Data: R.join('~', xs.map(getOriginalS3Key)), PartitionKey: kinesis_shards[i%kinesis_shards_count]})
 
     const params = {
