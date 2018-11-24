@@ -41,7 +41,7 @@ const counter = () => {
   const total = () => count
   const reset = (x) => count = x
   const update = (x) => count += (x) ? x : 0
-  const timesleep = () => 2**count
+  const timesleep = () => 1000*count //ms to second
   return { update: update, total: total, timesleep: timesleep, reset: reset }
 }
 
@@ -107,7 +107,7 @@ const kinesis_producer = (data) => {
             timer.update(1)
             return sleep(timer.timesleep()).then(kinesis_producer(data))
         } else {
-            timer.reset(7)
+            timer.reset(1)
         }
         return null
     }
@@ -123,7 +123,7 @@ const kinesis_producer = (data) => {
 
 // timer for preventing flooding kinesis (result from FailedRecordCount)
 const timer = counter()
-timer.reset(7)
+timer.reset(1)
 
 program.option('-f, --filename <required>', 'filename is similar to S3 bucket in first level')
     .parse(process.argv)
