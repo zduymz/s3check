@@ -47,9 +47,16 @@ const counter = () => {
 
 function sleep(ms){
     return new Promise(resolve => {
+        console.log('Sleep: ', ms)
         setTimeout(resolve, ms)
     })
 }
+
+const writeToFile = (xs) => {
+        return new Promise(function(resolve) {
+            fs.appendFile('sample.txt', R.join('\n', R.concat(xs, [''])), (err) => { resolve(err) })
+        })
+    }
 
 const startProcess = (filename) => {
 
@@ -61,8 +68,8 @@ const startProcess = (filename) => {
     let lines = []
 
     rl.on('line', (line) => {
-        if(lines.length < limit) lines.push(line)
-        else {
+        lines.push(line)
+        if(lines.length >= limit) {
             rl.pause()
             count.update(lines.length)
             kinesis_producer(lines).then(() => {
@@ -70,7 +77,7 @@ const startProcess = (filename) => {
                 lines.length = 0
                 sleep(100).then(rl.resume())
             })
-            }
+        }
     })
 
     rl.on('end', () => {
@@ -83,7 +90,6 @@ const startProcess = (filename) => {
 }
 
 const kinesis_producer = (data) => {
-    // draft message, 5 keys into a record
     const generateRecord = (xs, i) => ({Data: R.join('~', xs.map(getOriginalS3Key)), PartitionKey: kinesis_shards[i%kinesis_shards_count]})
 
     const params = {
@@ -107,6 +113,7 @@ const kinesis_producer = (data) => {
     }
 
     const producerP = new Promise(function(resolve, reject) {
+        // putRecords support max 500 records/request, each record max 1MB, limit 5MB in total request
         kinesis.putRecords(params, (err, res) => {
             err == null ? resolve(res) : reject(err)
         })

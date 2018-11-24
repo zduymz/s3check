@@ -77,20 +77,9 @@ const dumpRedis = () => {
     })
 
     stream.on('end', () => {
-        // Bc async push msg to kinesis, you will see this output earlier a little bit
+        // Bc async push msg to kinesis, this output earlier a little bit
         console.log(`Dumped ${count.total()} keys`)
-        // TODO: flush database
-        redis.disconnect()
-    })
-}
-
-const kinesis_test = () => {
-    const params = {
-        StreamName: 'dmai-s3',
-        Limit: 300
-    }
-    kinesis.describeStream(params, (err, data) => {
-        console.log(err, data.StreamDescription.Shards.length)
+        redis.flushdb(() => redis.disconnect())
     })
 }
 
