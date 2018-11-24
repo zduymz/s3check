@@ -9,11 +9,11 @@ const concatAll = R.unapply(R.reduce(R.concat, []));
 
 const sleep = (ms) => {
     return new Promise(resolve => {
-        setTimeout(resolve, ms)
+        setTimeout(resolve, ms);
     });
 };
 
-const getRandomTimeout = () => Math.floor(Math.random() * 2000)  
+const getRandomTimeout = () => Math.floor(Math.random() * 2000);
 
 const errHandler = (err) => {
     console.log('Error:', err);
@@ -23,7 +23,7 @@ const respHandler = (resp) => {
     if(resp.Errors.length > 0) {
         console.log('Response:', resp.Errors);
     } else {
-        console.log('Done')
+        console.log('Done');
     }
 };
 
@@ -40,19 +40,19 @@ const s3GetObjectVersions = (key) => {
             // avoid flooding s3 api, if it work, no error "SlowDown: Please reduce your request rate"
             await sleep(getRandomTimeout(), s3.listObjectVersions(params, (err, data) => {
                 if(err) {
-                    consolelog('s3GetObjectError', error);
+                    console.log('s3GetObjectError', err);
                     return sleep(getRandomTimeout(), listVersions(key));
                 } else {
                     // if key does not exist, [] is returned
                     const kv = data.Versions.map(R.props(['Key', 'VersionId'])).filter(([k, v]) => k == key);
-                    kv.length > 0 ? resolve(kv) : reject(kv)
+                    kv.length > 0 ? resolve(kv) : reject(kv);
                     //kv.length > 0 ? resolve(kv) : console.log(`${key} deleted`)
                 }
             }));
         };
         // keep asking s3 api when a result returned
-        listVersions(key)
-    }).catch(() => [])
+        listVersions(key);
+    }).catch(() => []);
     // When any of function called was rejected. Promise.all will stop
     // it mean when any key in batch deleted, the rest will be ignored
     // .catch() will solve this problem
