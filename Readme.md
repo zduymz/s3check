@@ -62,6 +62,13 @@ lambda_s3_copy.js
 lambda_s3_delete.js
 ```
 
+#### Some thoughts
+* This is my first time experience Kinesis, i can say it's easy to use but so hard to know what's going on.  
+First, i created stream with 200 shards, i thought with as many shards i can have the same number of lambda functions can consume that shards.  But i see it's not cheap at all. I decided to scale down to 10 shards.  
+When i check Kinesis monitoring page, found nothing useful. I would like to know how many messages left, does my lambda function drop any message because message TTL, it's totally black box to me. I set message TTL to 168 hours and hope there is no dropped messages before my lambda function consume.
+* AWS said there will number of lambda functions will be launched the same as number of shards. But i didn't see. When i scaled down my stream to 10 shards, i saw maximum 8, usually 6 lambda functions (i found that number in cloudwatch log - creation time, last ingestion time, last event time). I'm so sure i pushed message to stream shards evenly.
+* 
+
 
 
 
