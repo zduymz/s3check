@@ -80,11 +80,16 @@ const s3Delete = (keys) => {
                 else resolve(res);
             });
         };
-        handlerDelete(keys);
+        // s3 deleteObjects can not handle over 1000 keys at one time
+        R.splitEvery(1000, keys).map(handlerDelete);
     });
 };
 
 const generateObjects = (data) => R.chain((x) => concatAll(x), data).map(R.zipObj(['Key', 'VersionId']));
+
+/*
+ * Follwing export is used for aws lambda function
+ */
 
 exports.handler = (event) => {
     event.Records.forEach(function(record) {
@@ -99,4 +104,9 @@ exports.handler = (event) => {
 };
 
 
-
+/*
+ * Following export is use for running on local machine
+ */
+exports.worker = (payload) => {
+    console.log(payload)
+}
