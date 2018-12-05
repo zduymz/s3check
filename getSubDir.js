@@ -1,9 +1,6 @@
 const aws = require('aws-sdk')
 const R = require('ramda')
 const fs = require('fs')
-const Redis = require('ioredis')
-const redis = new Redis()
-const pipeline = redis.pipeline()
 const config = require('./config')
 const s3 = new aws.S3()
 
@@ -19,7 +16,7 @@ const getFirstSubDirectory = (bucket, filename, prefix) => {
     if (prefix) opts.Prefix = prefix
 
     const writeToFile = (data) => {
-        fs.appendFile(filename, data, (err) => { if (err) console.log(err) });
+        fs.appendFile(filename, data + '\n', (err) => { if (err) console.log(err) });
     }
 
     const callback = (err, data) => {
@@ -43,5 +40,4 @@ const getFirstSubDirectory = (bucket, filename, prefix) => {
 
 
 const original_bucket = config.s3.source_bucket
-const copied_bucket = config.s3.dest_bucket
-getFirstSubDirectory(original_bucket, 'level1.txt')
+getFirstSubDirectory(original_bucket, 'level2.txt', 'buck10000328/')
