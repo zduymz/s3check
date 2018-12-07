@@ -95,7 +95,7 @@ const runCheck = (bucket, prefix, mode) => {
     }
 
     const handleS3Object = (data) => {
-        const addPrefix = (x) => removeSplash(prefix) + `/${x}`
+        const addPrefix = (x) => removeSplash(prefix.substr(0, prefix.indexOf('/'))) + `/${x}`
         const lines = data.Contents.map(R.compose(addPrefix, removeSplash, removePrefix, getKey))
         return [lines, data.IsTruncated ? data.NextContinuationToken : null]
     }
